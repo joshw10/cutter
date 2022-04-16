@@ -65,6 +65,7 @@ set(SOURCES
     widgets/TypesWidget.cpp
     widgets/HeadersWidget.cpp
     widgets/SearchWidget.cpp
+    widgets/SearchThread.cpp
     CutterApplication.cpp
     dialogs/RizinPluginsDialog.cpp
     widgets/CutterDockWidget.cpp
@@ -215,6 +216,7 @@ set(HEADER_FILES
     widgets/TypesWidget.h
     widgets/HeadersWidget.h
     widgets/SearchWidget.h
+    widgets/SearchThread.h
     dialogs/RizinPluginsDialog.h
     widgets/CutterDockWidget.h
     widgets/CutterTreeWidget.h

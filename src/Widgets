@@ -2,16 +2,18 @@
 #include "ui_SearchWidget.h"
 #include "core/MainWindow.h"
 #include "common/Helpers.h"
+
 #include <QDockWidget>
 #include <QTreeWidget>
 #include <QComboBox>
-#include <QMovie>
+#include <QShortcut>
 
 namespace {
 
 static const int kMaxTooltipWidth = 500;
 static const int kMaxTooltipDisasmPreviewLines = 10;
 static const int kMaxTooltipHexdumpBytes = 64;
+
 }
 
 static const QMap<QString, QString> searchBoundaries {
@@ -174,12 +176,6 @@ bool SearchSortFilterProxyModel::lessThan(const QModelIndex &left, const QModelI
 SearchWidget::SearchWidget(MainWindow *main) : CutterDockWidget(main), ui(new Ui::SearchWidget)
 {
     ui->setupUi(this);
-
-    qRegisterMetaType<QList<SearchDescription>>("QList<SearchDescription>");    
-    sThread = new SearchThread(this);
-    connect(sThread, SIGNAL(searched(QList<SearchDescription>)), this, SLOT(onSearched(QList<SearchDescription>)));
-    connect(sThread, SIGNAL(finished()), this, SLOT(onFinished()));
-
     setStyleSheet(QString("QToolTip { max-width: %1px; opacity: 230; }").arg(kMaxTooltipWidth));
 
     updateSearchBoundaries();
@@ -189,7 +185,7 @@ SearchWidget::SearchWidget(MainWindow *main) : CutterDockWidget(main), ui(new Ui
     ui->searchTreeView->setModel(search_proxy_model);
     ui->searchTreeView->setMainWindow(main);
     ui->searchTreeView->sortByColumn(SearchModel::OFFSET, Qt::AscendingOrder);
- 
+
     setScrollMode();
 
     connect(Core(), &CutterCore::toggleDebugView, this, &SearchWidget::updateSearchBoundaries);
@@ -197,77 +193,24 @@ SearchWidget::SearchWidget(MainWindow *main) : CutterDockWidget(main), ui(new Ui
     connect(Core(), &CutterCore::commentsChanged, this,
             [this]() { qhelpers::emitColumnChanged(search_model, SearchModel::COMMENT); });
 
-    searchL = new QLabel(0, Qt::Widget);
-    searchL->setWindowModality(Qt::ApplicationModal);
-    searchL->setWindowFlags(Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint);
-    searchL->setFixedHeight(200);
-    searchL->setFixedWidth(200); 
-    searchBar = new QMovie("./search.gif");
-    searchL->setMovie(searchBar);
-    searchL->setAlignment(Qt::AlignCenter);
+    QShortcut *enter_press = new QShortcut(QKeySequence(Qt::Key_Return), this);
+    connect(enter_press, &QShortcut::activated, this, [this]() {
+        refreshSearch();
+        checkSearchResultEmpty();
+    });
+    enter_press->setContext(Qt::WidgetWithChildrenShortcut);
 
-    ui->searchButton->setShortcut(QKeySequence(Qt::Key_Return));
+    connect(ui->searchButton, &QAbstractButton::clicked, this, [this]() {
+        refreshSearch();
+        checkSearchResultEmpty();
+    });
 
-   connect(ui->searchButton, &QAbstractButton::clicked, this, &SearchWidget::searchingStart);
-   connect(ui->searchspaceCombo,
+    connect(ui->searchspaceCombo,
             static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
             [this](int index) { updatePlaceholderText(index); });
 }
 
-SearchWidget::~SearchWidget() {
-    if(searchBar)
-    {
-        delete searchBar;
-    }
-
-    if(searchL)
-    {
-        delete searchL;
-    }
-
-    if(sThread)
-    {
-        delete sThread;
-    }
-}
-
-void SearchWidget::searchingStart()
-{
-
-    ui->searchButton->setText("Searching...");
-    ui->searchButton->setEnabled(false);
-    searchL->show();
-    searchBar->start();
-    QString searchFor = ui->filterLineEdit->text();
-    QString searchSpace = ui->searchspaceCombo->currentData().toString();
-    QString searchIn = ui->searchInCombo->currentData().toString();
-    sThread->setVariables(search, searchIn, searchFor, searchSpace);
-    search_model->beginResetModel();
-    sThread->start();
-}
-
-void SearchWidget::onSearched(QList<SearchDescription> s)
-{
-    search = s;
-}
-
-void SearchWidget::onFinished()
-{
-    qDebug() << "Search Complete";
-    searchingEnd();
-}
-
-void SearchWidget::searchingEnd()
-{
-    search_model->endResetModel();
-    ui->searchButton->setText("Search");
-    ui->searchButton->setEnabled(true);
-    ui->searchButton->setShortcut(QKeySequence(Qt::Key_Return));
-    searchBar->stop();
-    searchL->hide();
-    qhelpers::adjustColumns(ui->searchTreeView, 3, 0);
-    checkSearchResultEmpty();
-}
+SearchWidget::~SearchWidget() {}
 
 void SearchWidget::updateSearchBoundaries()
 {
@@ -319,6 +262,11 @@ void SearchWidget::refreshSearchspaces()
 
 void SearchWidget::refreshSearch()
 {
+QLabel *lbl = new QLabel;
+QMovie *movie = new QMovie("./search.gif");
+lbl->setMovie(movie);
+lbl->show();
+movie->start();
     QString searchFor = ui->filterLineEdit->text();
     QString searchSpace = ui->searchspaceCombo->currentData().toString();
     QString searchIn = ui->searchInCombo->currentData().toString();
@@ -328,9 +276,10 @@ void SearchWidget::refreshSearch()
     search_model->endResetModel();
 
     qhelpers::adjustColumns(ui->searchTreeView, 3, 0);
+movie->destroy();
 }
 
-// No Results\Results Found information message when search returns empty or search returns results
+// No Results Found information message when search returns empty
 // Called by &QShortcut::activated and &QAbstractButton::clicked signals
 void SearchWidget::checkSearchResultEmpty()
 {
@@ -340,16 +289,6 @@ void SearchWidget::checkSearchResultEmpty()
         noResultsMessage.append("</b><br>");
         noResultsMessage.append(ui->filterLineEdit->text().toHtmlEscaped());
         QMessageBox::information(this, tr("No Results Found"), noResultsMessage);
-    }
-    else
-    {
-        QString resultsFoundMessage = "<b>";
-        QString numfound = QString::number(search.size());
-        resultsFoundMessage.append(numfound);
-        resultsFoundMessage.append(tr(" results found for:"));
-        resultsFoundMessage.append("</b><br>");
-        resultsFoundMessage.append(ui->filterLineEdit->text().toHtmlEscaped());
-        QMessageBox::information(this, tr("Search Results Found"), resultsFoundMessage);
     }
 }
 

@@ -1,6 +1,7 @@
 #include "SearchWidget.h"
 #include "ui_SearchWidget.h"
 #include "core/MainWindow.h"
+#include "MThread.h"
 #include "common/Helpers.h"
 #include <QDockWidget>
 #include <QTreeWidget>
@@ -12,6 +13,7 @@ namespace {
 static const int kMaxTooltipWidth = 500;
 static const int kMaxTooltipDisasmPreviewLines = 10;
 static const int kMaxTooltipHexdumpBytes = 64;
+static int numclicked = 0;
 }
 
 static const QMap<QString, QString> searchBoundaries {
@@ -174,11 +176,10 @@ bool SearchSortFilterProxyModel::lessThan(const QModelIndex &left, const QModelI
 SearchWidget::SearchWidget(MainWindow *main) : CutterDockWidget(main), ui(new Ui::SearchWidget)
 {
     ui->setupUi(this);
-
-    qRegisterMetaType<QList<SearchDescription>>("QList<SearchDescription>");    
-    sThread = new SearchThread(this);
-    connect(sThread, SIGNAL(searched(QList<SearchDescription>)), this, SLOT(onSearched(QList<SearchDescription>)));
-    connect(sThread, SIGNAL(finished()), this, SLOT(onFinished()));
+    
+    mThread = new MThread(this);
+    
+    connect(mThread, SIGNAL(valueChanged(int)), this, SLOT(onValueChanged(int)));
 
     setStyleSheet(QString("QToolTip { max-width: %1px; opacity: 230; }").arg(kMaxTooltipWidth));
 
@@ -204,12 +205,17 @@ SearchWidget::SearchWidget(MainWindow *main) : CutterDockWidget(main), ui(new Ui
     searchL->setFixedWidth(200); 
     searchBar = new QMovie("./search.gif");
     searchL->setMovie(searchBar);
-    searchL->setAlignment(Qt::AlignCenter);
 
     ui->searchButton->setShortcut(QKeySequence(Qt::Key_Return));
-
+/*    connect(ui->searchButton, &QAbstractButton::clicked, this, [this]() {
+        searchingStart();
+        refreshSearch();
+        searchingEnd();
+        checkSearchResultEmpty();
+    });
+*/
    connect(ui->searchButton, &QAbstractButton::clicked, this, &SearchWidget::searchingStart);
-   connect(ui->searchspaceCombo,
+    connect(ui->searchspaceCombo,
             static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
             [this](int index) { updatePlaceholderText(index); });
 }
@@ -224,49 +230,35 @@ SearchWidget::~SearchWidget() {
     {
         delete searchL;
     }
-
-    if(sThread)
-    {
-        delete sThread;
-    }
 }
 
 void SearchWidget::searchingStart()
 {
-
-    ui->searchButton->setText("Searching...");
+/*    ui->searchButton->setText("Searching...");
     ui->searchButton->setEnabled(false);
     searchL->show();
     searchBar->start();
-    QString searchFor = ui->filterLineEdit->text();
-    QString searchSpace = ui->searchspaceCombo->currentData().toString();
-    QString searchIn = ui->searchInCombo->currentData().toString();
-    sThread->setVariables(search, searchIn, searchFor, searchSpace);
-    search_model->beginResetModel();
-    sThread->start();
+    refreshSearch();*/
+    if(numclicked == 0)
+    {
+        numclicked = numclicked + 1;
+        mThread->start();
+    }
+    else
+        mThread->Stop = true;
 }
 
-void SearchWidget::onSearched(QList<SearchDescription> s)
+void SearchWidget::onValueChanged(int count)
 {
-    search = s;
-}
-
-void SearchWidget::onFinished()
-{
-    qDebug() << "Search Complete";
-    searchingEnd();
+    ui->searchButton->setText(QString::number(count));
 }
 
 void SearchWidget::searchingEnd()
 {
-    search_model->endResetModel();
     ui->searchButton->setText("Search");
     ui->searchButton->setEnabled(true);
-    ui->searchButton->setShortcut(QKeySequence(Qt::Key_Return));
     searchBar->stop();
     searchL->hide();
-    qhelpers::adjustColumns(ui->searchTreeView, 3, 0);
-    checkSearchResultEmpty();
 }
 
 void SearchWidget::updateSearchBoundaries()
@@ -330,7 +322,7 @@ void SearchWidget::refreshSearch()
     qhelpers::adjustColumns(ui->searchTreeView, 3, 0);
 }
 
-// No Results\Results Found information message when search returns empty or search returns results
+// No Results Found information message when search returns empty
 // Called by &QShortcut::activated and &QAbstractButton::clicked signals
 void SearchWidget::checkSearchResultEmpty()
 {

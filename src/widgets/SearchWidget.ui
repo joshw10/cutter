@@ -78,6 +78,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QLabel" name="searchLabel">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="searchButton">
         <property name="text">
          <string>Search</string>

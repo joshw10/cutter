@@ -6,9 +6,11 @@
 #include <QAbstractItemModel>
 #include <QSortFilterProxyModel>
 
+#include "SearchThread.h"
 #include "core/Cutter.h"
 #include "CutterDockWidget.h"
 #include "AddressableItemList.h"
+#include <QShortcut>
 
 class MainWindow;
 class QTreeWidgetItem;
@@ -22,7 +24,7 @@ class SearchModel : public AddressableItemModel<QAbstractListModel>
 
 private:
     QList<SearchDescription> *search;
-
+ 
 public:
     enum Columns { OFFSET = 0, SIZE, CODE, DATA, COMMENT, COUNT };
     static const int SearchDescriptionRole = Qt::UserRole;
@@ -62,11 +64,17 @@ class SearchWidget : public CutterDockWidget
 public:
     explicit SearchWidget(MainWindow *main);
     ~SearchWidget();
+    SearchThread *sThread;
+
+public slots:
+    void onSearched(QList<SearchDescription> search);
+    void onFinished();
 
 private slots:
     void searchChanged();
     void updateSearchBoundaries();
     void refreshSearchspaces();
+    void searchingStart();
 
 private:
     std::unique_ptr<Ui::SearchWidget> ui;
@@ -74,11 +82,13 @@ private:
     SearchModel *search_model;
     SearchSortFilterProxyModel *search_proxy_model;
     QList<SearchDescription> search;
-
+    QMovie *searchBar;
+    QLabel *searchL;
     void refreshSearch();
     void checkSearchResultEmpty();
     void setScrollMode();
     void updatePlaceholderText(int index);
+    void searchingEnd();
 };
 
 #endif // SEARCHWIDGET_H

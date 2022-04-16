@@ -6,7 +6,6 @@
 #include <QVector>
 #include <QStringList>
 #include <QStandardPaths>
-
 #include <cassert>
 #include <memory>
 
@@ -3690,6 +3689,7 @@ bool CutterCore::isAddressMapped(RVA addr)
 
 QList<SearchDescription> CutterCore::getAllSearch(QString searchFor, QString space, QString in)
 {
+
     CORE_LOCK();
     QList<SearchDescription> searchRef;
 
@@ -3736,6 +3736,7 @@ QList<SearchDescription> CutterCore::getAllSearch(QString searchFor, QString spa
             searchRef << exp;
         }
     }
+
     return searchRef;
 }
 
