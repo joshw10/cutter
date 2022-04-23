@@ -197,15 +197,6 @@ SearchWidget::SearchWidget(MainWindow *main) : CutterDockWidget(main), ui(new Ui
     connect(Core(), &CutterCore::commentsChanged, this,
             [this]() { qhelpers::emitColumnChanged(search_model, SearchModel::COMMENT); });
 
-    searchL = new QLabel(0, Qt::Widget);
-    searchL->setWindowModality(Qt::ApplicationModal);
-    searchL->setWindowFlags(Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint);
-    searchL->setFixedHeight(200);
-    searchL->setFixedWidth(200); 
-    searchBar = new QMovie("./search.gif");
-    searchL->setMovie(searchBar);
-    searchL->setAlignment(Qt::AlignCenter);
-
     ui->searchButton->setShortcut(QKeySequence(Qt::Key_Return));
 
    connect(ui->searchButton, &QAbstractButton::clicked, this, &SearchWidget::searchingStart);
