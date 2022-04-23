@@ -82,8 +82,6 @@ private:
     SearchModel *search_model;
     SearchSortFilterProxyModel *search_proxy_model;
     QList<SearchDescription> search;
-    QMovie *searchBar;
-    QLabel *searchL;
     void refreshSearch();
     void checkSearchResultEmpty();
     void setScrollMode();

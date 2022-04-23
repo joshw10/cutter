@@ -215,15 +215,6 @@ SearchWidget::SearchWidget(MainWindow *main) : CutterDockWidget(main), ui(new Ui
 }
 
 SearchWidget::~SearchWidget() {
-    if(searchBar)
-    {
-        delete searchBar;
-    }
-
-    if(searchL)
-    {
-        delete searchL;
-    }
 
     if(sThread)
     {
@@ -236,8 +227,6 @@ void SearchWidget::searchingStart()
 
     ui->searchButton->setText("Searching...");
     ui->searchButton->setEnabled(false);
-    searchL->show();
-    searchBar->start();
     QString searchFor = ui->filterLineEdit->text();
     QString searchSpace = ui->searchspaceCombo->currentData().toString();
     QString searchIn = ui->searchInCombo->currentData().toString();
@@ -263,8 +252,6 @@ void SearchWidget::searchingEnd()
     ui->searchButton->setText("Search");
     ui->searchButton->setEnabled(true);
     ui->searchButton->setShortcut(QKeySequence(Qt::Key_Return));
-    searchBar->stop();
-    searchL->hide();
     qhelpers::adjustColumns(ui->searchTreeView, 3, 0);
     checkSearchResultEmpty();
 }
